@@ -1,7 +1,15 @@
-﻿const editor = document.getElementById('editor');
+const editor = document.getElementById('editor');
+const embedConfig = window.DocFlowConfig || {};
+const storageKey = embedConfig.storageKey || 'docflow_content';
 let savedSel = null;
 let currentZoom = 100;
 let autoSaveTimer;
+
+function notifyEmbedChange() {
+  if (window.DocFlowBridge && typeof window.DocFlowBridge.notifyContentChange === 'function') {
+    window.DocFlowBridge.notifyContentChange();
+  }
+}
 
 // ===== EXECCOMMAND WRAPPER =====
 function execCmd(cmd, val = null) {
@@ -54,9 +62,54 @@ function buildColorGrid(gridId, colors, applyFn) {
     s.className = 'color-swatch';
     s.style.background = c;
     s.title = c;
-    s.onclick = () => applyFn(c);
+    s.onmousedown = (e) => {
+      e.preventDefault();
+      applyFn(c);
+    };
     grid.appendChild(s);
   });
+}
+
+function applyColorToSelection(property, value) {
+  editor.focus();
+  restoreSelection();
+
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return false;
+
+  const range = sel.getRangeAt(0);
+  const styleKey = property === 'color' ? 'color' : 'backgroundColor';
+
+  if (range.collapsed) {
+    try {
+      document.execCommand('styleWithCSS', false, true);
+    } catch (e) {}
+    const cmd = property === 'color' ? 'foreColor' : 'backColor';
+    return document.execCommand(cmd, false, value);
+  }
+
+  const span = document.createElement('span');
+  span.style[styleKey] = value;
+
+  try {
+    const fragment = range.extractContents();
+    span.appendChild(fragment);
+    range.insertNode(span);
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    newRange.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+    savedSel = newRange.cloneRange();
+    return true;
+  } catch (e) {
+    try {
+      document.execCommand('styleWithCSS', false, true);
+    } catch (err) {}
+    const cmd = property === 'color' ? 'foreColor' : 'backColor';
+    if (document.execCommand(cmd, false, value)) return true;
+    return document.execCommand('hiliteColor', false, value);
+  }
 }
 
 buildColorGrid('textColorGrid', textColors, applyTextColor);
@@ -64,22 +117,22 @@ buildColorGrid('bgColorGrid', bgColors, applyBgColor);
 
 function applyTextColor(color) {
   saveSelection();
-  editor.focus();
-  restoreSelection();
-  document.execCommand('foreColor', false, color);
+  applyColorToSelection('color', color);
   document.getElementById('textColorInd').style.background = color;
   closeAllColorPickers();
+  updateToolbarState();
   scheduleAutoSave();
+  notifyEmbedChange();
 }
 
 function applyBgColor(color) {
   saveSelection();
-  editor.focus();
-  restoreSelection();
-  document.execCommand('hiliteColor', false, color);
+  applyColorToSelection('backgroundColor', color);
   document.getElementById('bgColorInd').style.background = color;
   closeAllColorPickers();
+  updateToolbarState();
   scheduleAutoSave();
+  notifyEmbedChange();
 }
 
 function toggleColorPicker(type) {
@@ -116,6 +169,32 @@ function restoreSelection() {
 
 editor.addEventListener('mouseup', saveSelection);
 editor.addEventListener('keyup', saveSelection);
+
+// Preserve selection when opening color pickers (mousedown steals focus)
+['textColorBtn', 'textColorCustom', 'bgColorCustom'].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      saveSelection();
+    });
+  }
+});
+
+document.querySelectorAll('.color-btn-wrap .tb-btn').forEach((btn) => {
+  btn.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    saveSelection();
+  });
+});
+
+// Disable browser context menu / spellcheck UI (Word-style native menus)
+editor.addEventListener('contextmenu', (e) => e.preventDefault());
+document.querySelector('.page')?.addEventListener('contextmenu', (e) => e.preventDefault());
+document.getElementById('editorScroll')?.addEventListener('contextmenu', (e) => e.preventDefault());
+document.querySelector('.app-shell')?.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest('input, textarea, select')) e.preventDefault();
+});
 
 // ===== TABLE =====
 function openTableModal() {
@@ -378,6 +457,7 @@ function updateStats() {
 editor.addEventListener('input', () => {
   updateStats();
   scheduleAutoSave();
+  notifyEmbedChange();
 });
 
 function toggleWordCount() {
@@ -388,17 +468,47 @@ function toggleWordCount() {
 
 // ===== AUTO SAVE (localStorage) =====
 function scheduleAutoSave() {
+  if (embedConfig.embed && embedConfig.autosave === false) return;
   clearTimeout(autoSaveTimer);
-  document.getElementById('saveStatus').textContent = 'Savingâ€¦';
+  document.getElementById('saveStatus').textContent = 'Saving...';
   autoSaveTimer = setTimeout(saveDoc, 1500);
 }
 
 function saveDoc() {
   try {
-    localStorage.setItem('docflow_content', editor.innerHTML);
+    if (embedConfig.autosave !== false) {
+      localStorage.setItem(storageKey, editor.innerHTML);
+    }
     const now = new Date();
     document.getElementById('saveStatus').textContent = `Saved ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-  } catch(e) {}
+    notifyEmbedChange();
+    if (window.DocFlowBridge) {
+      window.DocFlowBridge.postToParent({
+        type: 'SAVE',
+        payload: getEditorSnapshot(),
+      });
+    }
+  } catch (e) {}
+}
+
+function getEditorSnapshot() {
+  const text = editor.innerText || '';
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  return {
+    html: editor.innerHTML,
+    text,
+    stats: {
+      words,
+      characters: text.length,
+      lines: text.split('\n').length,
+    },
+  };
+}
+
+function setEditorContent(html, options = {}) {
+  editor.innerHTML = html || '<p></p>';
+  updateStats();
+  if (!options.silent) scheduleAutoSave();
 }
 
 function newDoc() {
@@ -429,10 +539,12 @@ function saveAs(type) {
 }
 
 // ===== RESTORE SAVED CONTENT =====
-try {
-  const saved = localStorage.getItem('docflow_content');
-  if (saved) editor.innerHTML = saved;
-} catch(e) {}
+if (embedConfig.autosave !== false) {
+  try {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) editor.innerHTML = saved;
+  } catch (e) {}
+}
 
 // ===== RULER =====
 function drawRuler() {
@@ -485,6 +597,17 @@ editor.addEventListener('keydown', e => {
   }
 });
 
+// ===== PUBLIC API (embed host + integrations) =====
+window.DocFlow = Object.assign(window.DocFlow || {}, {
+  VERSION: '1.0.0',
+  getContent: getEditorSnapshot,
+  setContent: setEditorContent,
+  focus: () => editor.focus(),
+  execCommand: (cmd, val) => execCmd(cmd, val),
+  getStats: () => getEditorSnapshot().stats,
+  isEmbed: () => !!embedConfig.embed,
+});
+
 // Init
 updateStats();
-updateToolbarState();
+updateToolbarState();
