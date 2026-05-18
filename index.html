@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -95,11 +95,11 @@
   <!-- Font family & size -->
   <div class="toolbar-group">
     <select class="tb-select font-name-select" id="fontFamily" onchange="setFont(this.value)" title="Font Family">
-      <option value="Lora, serif">Lora (Default)</option>
+      <option value="Arial, sans-serif" selected>Arial (Default)</option>
+      <option value="Lora, serif">Lora</option>
       <option value="'DM Sans', sans-serif">DM Sans</option>
       <option value="Georgia, serif">Georgia</option>
       <option value="'Times New Roman', serif">Times New Roman</option>
-      <option value="Arial, sans-serif">Arial</option>
       <option value="Helvetica, sans-serif">Helvetica</option>
       <option value="Verdana, sans-serif">Verdana</option>
       <option value="Tahoma, sans-serif">Tahoma</option>
@@ -111,7 +111,7 @@
 
     <select class="tb-select font-size-select" id="fontSize" onchange="setFontSize(this.value)" title="Font Size">
       <option value="8">8</option><option value="9">9</option><option value="10">10</option>
-      <option value="11">11</option><option value="12" selected>12</option><option value="14">14</option>
+      <option value="11" selected>11</option><option value="12">12</option><option value="14">14</option>
       <option value="16">16</option><option value="18">18</option><option value="20">20</option>
       <option value="24">24</option><option value="28">28</option><option value="32">32</option>
       <option value="36">36</option><option value="48">48</option><option value="60">60</option>
@@ -150,7 +150,7 @@
     <div class="color-btn-wrap" style="position:relative;">
       <button class="tb-btn" title="Text Color" id="textColorBtn" onclick="toggleColorPicker('textColor')" style="padding-bottom:6px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
-        <span class="color-indicator" id="textColorInd" style="background:#1a1a2e;"></span>
+        <span class="color-indicator" id="textColorInd" style="background:#000000;"></span>
       </button>
       <div class="color-picker-dropdown" id="textColorPicker">
         <div style="font-size:11px;color:var(--toolbar-muted);margin-bottom:6px;">Text Color</div>
@@ -269,7 +269,7 @@
 <div class="editor-scroll" id="editorScroll">
   <div class="page-wrap">
     <div class="page" id="pageEl">
-      <div class="page-content" id="editor" contenteditable="true" spellcheck="true">
+      <div class="page-content" id="editor" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off" translate="no">
         <h1>Welcome to DocFlow</h1>
         <p>Start typing to create your document. Use the toolbar above for formatting options.</p>
         <p>You can <strong>bold</strong>, <em>italicize</em>, <u>underline</u>, and apply many other text styles.</p>
@@ -383,6 +383,7 @@
   <p class="footer-copyright">&copy; 2026 <a href="https://prateekdutta2001.github.io/PrateekDutta.in/" target="_blank" rel="noopener noreferrer">PRATEEK DUTTA</a>. This work is licensed under a Creative Commons Attribution 4.0 International License (CC BY 4.0).</p>
 </footer>
 
+<script src="embed-api.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
