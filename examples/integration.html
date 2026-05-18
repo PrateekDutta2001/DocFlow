@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocFlow Integration Example</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      margin: 0;
+      background: #f4f4f5;
+      color: #18181b;
+    }
+    header {
+      padding: 20px 24px;
+      background: #18181b;
+      color: #fafafa;
+    }
+    header h1 { margin: 0 0 6px; font-size: 1.25rem; }
+    header p { margin: 0; opacity: 0.8; font-size: 0.9rem; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .panel {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button.secondary { background: #e4e4e7; color: #18181b; }
+    button:hover { opacity: 0.92; }
+    #editor-host {
+      border: 1px solid #d4d4d8;
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 520px;
+    }
+    pre {
+      background: #18181b;
+      color: #e4e4e7;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      overflow: auto;
+      max-height: 180px;
+      margin: 0;
+    }
+    .status { font-size: 13px; color: #52525b; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DocFlow Embed Demo</h1>
+    <p>Example host app using the DocFlow Embed SDK</p>
+  </header>
+
+  <main>
+    <div class="panel">
+      <div class="actions">
+        <button type="button" id="btn-get">Get HTML</button>
+        <button type="button" id="btn-text" class="secondary">Get plain text</button>
+        <button type="button" id="btn-set" class="secondary">Load sample content</button>
+        <button type="button" id="btn-clear" class="secondary">Clear editor</button>
+      </div>
+      <p class="status" id="status">Loading editor…</p>
+    </div>
+
+    <div id="editor-host"></div>
+
+    <div class="panel" style="margin-top: 20px;">
+      <strong>Last response</strong>
+      <pre id="output">—</pre>
+    </div>
+  </main>
+
+  <script src="https://prateekdutta2001.github.io/DocFlow/docflow-embed.js"></script>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
+
+    const editor = DocFlowEmbed.embed('#editor-host', {
+      baseUrl: 'https://prateekdutta2001.github.io/DocFlow/',
+      height: '560px',
+      hideFooter: true,
+      allowedOrigin: window.location.origin,
+      initialContent: '<h2>Hello from your app</h2><p>Edit this document via the embedded DocFlow editor.</p>',
+      onReady() {
+        statusEl.textContent = 'Editor ready.';
+      },
+      onChange(payload) {
+        statusEl.textContent = `Changed — ${payload.stats.words} words, ${payload.stats.characters} characters`;
+      },
+    });
+
+    function show(data) {
+      outputEl.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    document.getElementById('btn-get').addEventListener('click', async () => {
+      show(await editor.getContent());
+    });
+
+    document.getElementById('btn-text').addEventListener('click', async () => {
+      show(await editor.getText());
+    });
+
+    document.getElementById('btn-set').addEventListener('click', async () => {
+      await editor.setContent(
+        '<h2>Updated from host</h2><p>Content was set programmatically at ' +
+          new Date().toLocaleTimeString() +
+          '.</p><ul><li>Item one</li><li>Item two</li></ul>'
+      );
+      statusEl.textContent = 'Sample content loaded.';
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', async () => {
+      await editor.clear();
+      statusEl.textContent = 'Editor cleared.';
+    });
+  </script>
+</body>
+</html>
