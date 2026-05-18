@@ -6,6 +6,8 @@ A lightweight, browser-based rich text document editor with a familiar word-proc
 
 DocFlow provides a clean editing surface styled like a printed page (A4), with a menu bar, formatting toolbar, ruler, live word count, and automatic draft recovery via `localStorage`. It is designed for quick document drafting, notes, and export to HTML or plain text.
 
+**Live demo:** [prateekdutta2001.github.io/DocFlow](https://prateekdutta2001.github.io/DocFlow/)
+
 ## Features
 
 - **Rich text editing** — Bold, italic, underline, strikethrough, superscript, subscript
